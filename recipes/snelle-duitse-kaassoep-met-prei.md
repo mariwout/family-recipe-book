@@ -1,18 +1,12 @@
-SNELLE DUITSE KAASSOEP MET PREI
- 
-# Personen	:	2
-Voorbereidingstijd	:	10 min.
-Bereidingstijd	:	15 min.
-Menugang	:	Soepen
-
-Type gerecht	:	Vegetarisch
-
-Soort gerecht	:	Soepen
-
-Land/Keuken	:	Duitsland
-
-Recept van	:	Marloes
-
+---
+title: SNELLE DUITSE KAASSOEP MET PREI
+persons: 2
+prep_time: 10 min.
+cook_time: 15 min.
+category: Soepen
+cuisine: Germin
+source: Marloes
+---
  
 Ingrediënten
 •	1 ui, zeer fijn gesnipperd
