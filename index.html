@@ -1,63 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Recipe Book</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      max-width: 900px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-    nav a {
-      display: block;
-      margin-bottom: 0.25rem;
-    }
-    article {
-      margin-top: 3rem;
-      border-top: 1px solid #ddd;
-      padding-top: 2rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Recipe Book</title>
+
+<!-- Marked.js for Markdown parsing -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  background: #fdf6f0;
+  color: #333;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+nav {
+  margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  justify-content: center;
+}
+
+nav a {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: #ffeadb;
+  color: #333;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+nav a:hover {
+  background: #ffd6a5;
+}
+
+article {
+  margin-top: 3rem;
+  border-top: 2px solid #f2c1a1;
+  padding-top: 2rem;
+  background: #fff7f0;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+article img {
+  max-width: 100%;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 6px;
+}
+</style>
 </head>
 <body>
 
-<h1>Recipe Book</h1>
+<h1>Family Recipe Book</h1>
+
 <nav id="index"></nav>
 <div id="recipes"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
 <script>
-const recipeFiles = [
-  "recipes/franse-preisoep-met-comte-borrelbrood.md"
-];
+const owner = "mariwout";         // your GitHub username
+const repo = "family-recipe-book"; // your repo name
+const folder = "recipes";          // folder containing recipes
 
 async function loadRecipes() {
   const index = document.getElementById("index");
   const container = document.getElementById("recipes");
 
+  // Fetch list of files in the recipes folder from GitHub API
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}`);
+  const files = await res.json();
+
+  // Only markdown files
+  const recipeFiles = files.filter(f => f.name.endsWith(".md"));
+
   for (const file of recipeFiles) {
-    const res = await fetch(file);
-    const text = await res.text();
+    const mdText = await fetch(file.download_url).then(r => r.text());
 
-    const body = text.replace(/^---[\\s\\S]*?---/, "").trim();
-    const titleMatch = text.match(/title:\\s*(.*)/);
+    // Extract title from frontmatter (or fallback to filename)
+    const titleMatch = mdText.match(/^#\s*(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : file.name.replace(/\.md$/, "");
 
-    const title = titleMatch ? titleMatch[1] : file;
-
+    // Generate ID for anchor
     const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
+    // Add link to index
     const link = document.createElement("a");
     link.href = "#" + id;
     link.textContent = title;
     index.appendChild(link);
 
+    // Convert markdown to HTML and add to page
     const article = document.createElement("article");
     article.id = id;
-    article.innerHTML = marked.parse(body);
-
+    article.innerHTML = marked.parse(mdText);
     container.appendChild(article);
   }
 }
