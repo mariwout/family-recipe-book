@@ -10,7 +10,7 @@ persons: n/a
 title: "FRANSE PREISOEP MET COMT\xC9-BORRELBROOD"
 ---
 
-![Recipe Image](images\image103.jpeg)
+![Recipe Image](images/image103.jpeg)
 
 ## Ingrediënten
 
@@ -77,3 +77,4 @@ Kook de soep op zacht vuur circa 10 tot 15 minuten door. Pureer de soep fijn met
 Snijd de bieslook fijn en garneer er de soep mee. Serveer met het Comté-borrelbrood.
 
 ## Tips
+
