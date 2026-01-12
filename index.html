@@ -220,61 +220,45 @@ const observer = new IntersectionObserver(entries => {
         e.target.dataset.loaded = '1';
     });
 }, { root: container, rootMargin: '200px' });
+    
   // Keep track of unique categories and cuisines
 const categories = new Set();
 const cuisines = new Set();
-
 // Fetch all recipes concurrently
-const fetchAll = recipesIndex.map(filename =>
-    axios.get(`${recipesFolder}${filename}`)
-        .then(res => ({ filename, md: res.data }))
-        .catch(err => {
-            console.error('Failed to fetch:', filename, err);
-            return null;
-        })
-);
+const fetchAll = recipesIndex.map(filename => axios.get(`${recipesFolder}${filename}`).then(res => ({ filename, md: res.data })).catch(err => console.error('Failed', filename, err)));
 
 Promise.all(fetchAll).then(results => {
-    const validResults = results.filter(r => r && r.md);
+    results.forEach(({ filename, md }) => {
+        // Parse frontmatter
+        const fmMatch = md.match(/^---\n([\s\S]+?)\n---/);
+        let frontmatter = {};
+        let content = md;
+        if(fmMatch){
+            const fmRaw = fmMatch[1].split('\n');
+            fmRaw.forEach(line => {
+                const [key, ...rest] = line.split(':');
+                if(key && rest){
+                    frontmatter[key.trim()] = rest.join(':').trim();
+                }
+            });
+            content = md.replace(fmMatch[0], '').trim();
+        }
 
-    validResults.forEach(({ filename, md }) => {
-        const { meta, body } = parseFrontmatter(md);
-        const id = slugify(meta.title || filename);
-
-        // Sidebar / index
-        const a = document.createElement('a');
-        a.href = `#${id}`;
-        a.textContent = meta.title || filename;
-        indexEl.appendChild(a);
-
-        // Track unique categories & cuisines
-        if (meta.category) categories.add(meta.category);
-        if (meta.cuisine) cuisines.add(meta.cuisine);
-
-        // Lazy-loading recipe container
-        const article = document.createElement('article');
-        article.className = 'recipe';
-        article.id = id;
-        article.dataset.category = meta.category || '';
-        article.dataset.cuisine = meta.cuisine || '';
-        article.dataset.search = (meta.title + ' ' + body).toLowerCase();
-        article._data = { meta, body };
-        article.innerHTML = '<em>Loading...</em>';
-
-        container.appendChild(article);
-        observer.observe(article);
-    });
-
-    // Populate filters (unique values)
-    categories.forEach(c => {
-        filterCategory.insertAdjacentHTML('beforeend',
-            `<option value="${c}">${c}</option>`
-        );
-    });
-    cuisines.forEach(c => {
-        filterCuisine.insertAdjacentHTML('beforeend',
-            `<option value="${c}">${c}</option>`
-        );
+        const html = `
+            <div class="recipe">
+                <h2>${frontmatter.title || 'Untitled Recipe'}</h2>
+                <div class="metadata">
+                    ${frontmatter.persons ? `<span>Persons: ${frontmatter.persons}</span>` : ''}
+                    ${frontmatter.prep_time ? `<span>Prep: ${frontmatter.prep_time}</span>` : ''}
+                    ${frontmatter.cook_time ? `<span>Cook: ${frontmatter.cook_time}</span>` : ''}
+                    ${frontmatter.category ? `<span>Category: ${frontmatter.category}</span>` : ''}
+                    ${frontmatter.cuisine ? `<span>Cuisine: ${frontmatter.cuisine}</span>` : ''}
+                    ${frontmatter.source ? `<span>Source: ${frontmatter.source}</span>` : ''}
+                </div>
+                <div class="content">${marked.parse(content)}</div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
     });
 });
 
@@ -285,6 +269,7 @@ filterCuisine.onchange = applyFilters;
 
 </body>
 </html>
+
 
 
 
