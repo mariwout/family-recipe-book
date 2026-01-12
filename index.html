@@ -131,13 +131,14 @@ main {
 <button id="backToTop">Top</button>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    
+
 <script>
 const recipesFolder = 'recipes/';
 const recipesIndex = [
     'franse-preisoep-met-comte-borrelbrood.md',
-    'advocaat.md'
+    'snellduitse-kaassoep-met-prei.md',
+    'witlof-krans.md',
+    'ananas-tarte-tatin-met-kokijs.md'
 ];
 
 const container = document.getElementById('recipes');
@@ -148,10 +149,10 @@ const filterCuisine = document.getElementById('filterCuisine');
 const backBtn = document.getElementById('backToTop');
 
 function parseFrontmatter(md) {
-    const match = md.match(/^---\s*[\r\n]+([\s\S]*?)\r?\n---/);
+    const match = md.match(/^---\n([\s\S]*?)\n---/);
     if (!match) return { meta: {}, body: md };
     const meta = {};
-    match[1].split(/\r?\n/).forEach(line => {
+    match[1].split('\n').forEach(line => {
         const i = line.indexOf(':');
         if (i === -1) return;
         meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
@@ -219,47 +220,48 @@ const observer = new IntersectionObserver(entries => {
         `;
         e.target.dataset.loaded = '1';
     });
-}, { root: container, rootMargin: '200px' });
-    
-  // Keep track of unique categories and cuisines
-const categories = new Set();
-const cuisines = new Set();
-// Fetch all recipes concurrently
-const fetchAll = recipesIndex.map(filename => axios.get(`${recipesFolder}${filename}`).then(res => ({ filename, md: res.data })).catch(err => console.error('Failed', filename, err)));
+}, { rootMargin: '200px' });
 
-Promise.all(fetchAll).then(results => {
-    results.forEach(({ filename, md }) => {
-        // Parse frontmatter
-        const fmMatch = md.match(/^---\n([\s\S]+?)\n---/);
-        let frontmatter = {};
-        let content = md;
-        if(fmMatch){
-            const fmRaw = fmMatch[1].split('\n');
-            fmRaw.forEach(line => {
-                const [key, ...rest] = line.split(':');
-                if(key && rest){
-                    frontmatter[key.trim()] = rest.join(':').trim();
-                }
-            });
-            content = md.replace(fmMatch[0], '').trim();
-        }
+Promise.all(
+    recipesIndex.map(f => fetch(recipesFolder + f).then(r => r.text()))
+).then(files => {
+    const cats = new Set();
+    const cuis = new Set();
 
-        const html = `
-            <div class="recipe">
-                <h2>${frontmatter.title || 'Untitled Recipe'}</h2>
-                <div class="metadata">
-                    ${frontmatter.persons ? `<span>Persons: ${frontmatter.persons}</span>` : ''}
-                    ${frontmatter.prep_time ? `<span>Prep: ${frontmatter.prep_time}</span>` : ''}
-                    ${frontmatter.cook_time ? `<span>Cook: ${frontmatter.cook_time}</span>` : ''}
-                    ${frontmatter.category ? `<span>Category: ${frontmatter.category}</span>` : ''}
-                    ${frontmatter.cuisine ? `<span>Cuisine: ${frontmatter.cuisine}</span>` : ''}
-                    ${frontmatter.source ? `<span>Source: ${frontmatter.source}</span>` : ''}
-                </div>
-                <div class="content">${marked.parse(content)}</div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
+    files.forEach(md => {
+        const { meta, body } = parseFrontmatter(md);
+        const id = slugify(meta.title || Math.random().toString());
+
+        cats.add(meta.category);
+        cuis.add(meta.cuisine);
+
+        indexEl.insertAdjacentHTML('beforeend',
+            `<a href="#${id}">${meta.title || 'Untitled'}</a>`
+        );
+
+        const article = document.createElement('article');
+        article.className = 'recipe';
+        article.id = id;
+        article.dataset.category = meta.category || '';
+        article.dataset.cuisine = meta.cuisine || '';
+        article.dataset.search = (meta.title + ' ' + body).toLowerCase();
+        article._data = { meta, body };
+        article.innerHTML = '<em>Loading...</em>';
+
+        container.appendChild(article);
+        observer.observe(article);
     });
+
+    [...cats].filter(Boolean).forEach(c =>
+        filterCategory.insertAdjacentHTML('beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
+    [...cuis].filter(Boolean).forEach(c =>
+        filterCuisine.insertAdjacentHTML('beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
 });
 
 searchInput.oninput = applyFilters;
@@ -269,10 +271,3 @@ filterCuisine.onchange = applyFilters;
 
 </body>
 </html>
-
-
-
-
-
-
-
