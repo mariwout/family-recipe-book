@@ -1,81 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Family Recipe Book</title>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<style>
-body {
-  font-family: system-ui, sans-serif;
-  max-width: 1000px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  background: #fdf6f0;
-  color: #333;
-}
-h1 { text-align: center; margin-bottom: 2rem; }
-nav { margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; justify-content: center; }
-nav a { display: inline-block; padding: 0.25rem 0.75rem; background: #ffeadb; color: #333; border-radius: 6px; text-decoration: none; transition: background 0.2s; }
-nav a:hover { background: #ffd6a5; }
-article { margin-top: 3rem; border-top: 2px solid #f2c1a1; padding-top: 2rem; background: #fff7f0; border-radius: 8px; padding: 1rem 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-article img { max-width: 100%; display: block; margin: 1rem 0; border-radius: 6px; }
-</style>
+    <meta charset="UTF-8">
+    <title>Family Recipe Book</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2rem; background: #fafafa; }
+        h1 { text-align: center; }
+        .recipe { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 2rem; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .recipe img { max-width: 100%; height: auto; display: block; margin: 0.5rem 0; border-radius: 4px; }
+        .metadata { font-size: 0.9rem; color: #555; margin-bottom: 0.5rem; }
+        .metadata span { display: inline-block; margin-right: 1rem; }
+        h2 { color: #333; border-bottom: 1px solid #eee; padding-bottom: 0.2rem; margin-top: 1rem; }
+    </style>
 </head>
 <body>
-<h1>Family Recipe Book</h1>
-<nav id="index"></nav>
-<div id="recipes"></div>
+    <h1>Family Recipe Book</h1>
+    <div id="recipes"></div>
 
-<script>
-const owner = "mariwout";
-const repo = "family-recipe-book";
-const folder = "recipes";
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const recipesFolder = 'recipes/';
+        const recipesIndex = [
+            // Add all your MD filenames here
+            'franse-preisoep-met-comte-borrelbrood.md',
+            'snellduitse-kaassoep-met-prei.md',
+            'witlof-krans.md',
+            'ananas-tarte-tatin-met-kokijs.md'
+        ];
 
-function parseFrontmatter(md) {
-  const match = md.match(/^---\s*([\s\S]*?)\s*---/);
-  if (!match) return {};
-  const yaml = match[1];
-  const lines = yaml.split("\n");
-  const data = {};
-  for (const line of lines) {
-    const [key, ...rest] = line.split(":");
-    if (key && rest) {
-      data[key.trim()] = rest.join(":").trim();
-    }
-  }
-  return data;
-}
+        const container = document.getElementById('recipes');
 
-async function loadRecipes() {
-  const index = document.getElementById("index");
-  const container = document.getElementById("recipes");
+        recipesIndex.forEach(filename => {
+            axios.get(`${recipesFolder}${filename}`)
+                .then(res => {
+                    const md = res.data;
 
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${folder}`);
-  const files = await res.json();
-  const recipeFiles = files.filter(f => f.name.endsWith(".md"));
+                    // Parse frontmatter manually
+                    const fmMatch = md.match(/^---\n([\s\S]+?)\n---/);
+                    let frontmatter = {};
+                    let content = md;
+                    if(fmMatch){
+                        const fmRaw = fmMatch[1].split('\n');
+                        fmRaw.forEach(line => {
+                            const [key, ...rest] = line.split(':');
+                            if(key && rest){
+                                frontmatter[key.trim()] = rest.join(':').trim();
+                            }
+                        });
+                        content = md.replace(fmMatch[0], '').trim();
+                    }
 
-  for (const file of recipeFiles) {
-    const mdText = await fetch(file.download_url).then(r => r.text());
-    const front = parseFrontmatter(mdText);
-    const title = front.title || file.name.replace(/\.md$/, "");
-    const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
-    // Index link
-    const link = document.createElement("a");
-    link.href = "#" + id;
-    link.textContent = title;
-    index.appendChild(link);
-
-    // Markdown content
-    const article = document.createElement("article");
-    article.id = id;
-    article.innerHTML = marked.parse(mdText.replace(/^---[\s\S]*?---/, "").trim());
-    container.appendChild(article);
-  }
-}
-
-loadRecipes();
-</script>
+                    const html = `
+                        <div class="recipe">
+                            <h2>${frontmatter.title || 'Untitled Recipe'}</h2>
+                            <div class="metadata">
+                                ${frontmatter.persons ? `<span>Persons: ${frontmatter.persons}</span>` : ''}
+                                ${frontmatter.prep_time ? `<span>Prep: ${frontmatter.prep_time}</span>` : ''}
+                                ${frontmatter.cook_time ? `<span>Cook: ${frontmatter.cook_time}</span>` : ''}
+                                ${frontmatter.category ? `<span>Category: ${frontmatter.category}</span>` : ''}
+                                ${frontmatter.cuisine ? `<span>Cuisine: ${frontmatter.cuisine}</span>` : ''}
+                                ${frontmatter.source ? `<span>Source: ${frontmatter.source}</span>` : ''}
+                            </div>
+                            <div class="content">${marked.parse(content)}</div>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
+                })
+                .catch(err => console.error('Failed to load', filename, err));
+        });
+    </script>
 </body>
 </html>
