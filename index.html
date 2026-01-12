@@ -219,41 +219,39 @@ const observer = new IntersectionObserver(entries => {
         `;
         e.target.dataset.loaded = '1';
     });
-}, { rootMargin: '200px' });
-        
+}, { root: container, rootMargin: '200px' });
+  // Keep track of unique categories and cuisines
+const categories = new Set();
+const cuisines = new Set();
+
 // Fetch all recipes concurrently
 const fetchAll = recipesIndex.map(filename =>
     axios.get(`${recipesFolder}${filename}`)
         .then(res => ({ filename, md: res.data }))
         .catch(err => {
             console.error('Failed to fetch:', filename, err);
-            return null; // ensure Promise.all doesn't break
+            return null;
         })
 );
 
 Promise.all(fetchAll).then(results => {
-    // filter out failed fetches
     const validResults = results.filter(r => r && r.md);
 
     validResults.forEach(({ filename, md }) => {
-        const { meta, body } = parseFrontmatter(md); // your frontmatter parser
+        const { meta, body } = parseFrontmatter(md);
         const id = slugify(meta.title || filename);
 
-        // Add to sidebar / index
+        // Sidebar / index
         const a = document.createElement('a');
         a.href = `#${id}`;
         a.textContent = meta.title || filename;
         indexEl.appendChild(a);
 
-        // Keep track of categories and cuisines for filters
-        if (meta.category) filterCategory.insertAdjacentHTML('beforeend',
-            `<option value="${meta.category}">${meta.category}</option>`
-        );
-        if (meta.cuisine) filterCuisine.insertAdjacentHTML('beforeend',
-            `<option value="${meta.cuisine}">${meta.cuisine}</option>`
-        );
+        // Track unique categories & cuisines
+        if (meta.category) categories.add(meta.category);
+        if (meta.cuisine) cuisines.add(meta.cuisine);
 
-        // Create lazy-loading recipe container
+        // Lazy-loading recipe container
         const article = document.createElement('article');
         article.className = 'recipe';
         article.id = id;
@@ -264,7 +262,19 @@ Promise.all(fetchAll).then(results => {
         article.innerHTML = '<em>Loading...</em>';
 
         container.appendChild(article);
-        observer.observe(article); // IntersectionObserver handles lazy rendering
+        observer.observe(article);
+    });
+
+    // Populate filters (unique values)
+    categories.forEach(c => {
+        filterCategory.insertAdjacentHTML('beforeend',
+            `<option value="${c}">${c}</option>`
+        );
+    });
+    cuisines.forEach(c => {
+        filterCuisine.insertAdjacentHTML('beforeend',
+            `<option value="${c}">${c}</option>`
+        );
     });
 });
 
@@ -275,6 +285,7 @@ filterCuisine.onchange = applyFilters;
 
 </body>
 </html>
+
 
 
 
