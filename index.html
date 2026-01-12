@@ -146,10 +146,10 @@ const filterCuisine = document.getElementById('filterCuisine');
 const backBtn = document.getElementById('backToTop');
 
 function parseFrontmatter(md) {
-    const match = md.match(/^---\n([\s\S]*?)\n---/);
+    const match = md.match(/^---\s*[\r\n]+([\s\S]*?)\r?\n---/);
     if (!match) return { meta: {}, body: md };
     const meta = {};
-    match[1].split('\n').forEach(line => {
+    match[1].split(/\r?\n/).forEach(line => {
         const i = line.indexOf(':');
         if (i === -1) return;
         meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
@@ -222,6 +222,7 @@ const observer = new IntersectionObserver(entries => {
 Promise.all(
     recipesIndex.map(f => fetch(recipesFolder + f).then(r => r.text()))
 ).then(files => {
+    
     const cats = new Set();
     const cuis = new Set();
 
@@ -268,4 +269,5 @@ filterCuisine.onchange = applyFilters;
 
 </body>
 </html>
+
 
