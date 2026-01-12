@@ -10,6 +10,8 @@ persons: n/a
 title: 12 FRUITS BREAD
 ---
 
+![Recipe Image](images/image1.jpeg)
+
 ## Ingrediënten
 
 Flour: 		500 gr
@@ -47,5 +49,6 @@ Figue 20
 Prune 20
 
 Cranberry 20
+
 
 Apricot 20
