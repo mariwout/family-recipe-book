@@ -129,7 +129,8 @@ main {
 </div>
 
 <button id="backToTop">Top</button>
-
+    
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <script>
@@ -149,15 +150,20 @@ const filterCuisine = document.getElementById('filterCuisine');
 const backBtn = document.getElementById('backToTop');
 
 function parseFrontmatter(md) {
-    const match = md.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) return { meta: {}, body: md };
+    const fm = md.match(/^---\s*([\s\S]*?)\s*---\s*/);
+    if (!fm) return { meta: {}, body: md };
+
     const meta = {};
-    match[1].split('\n').forEach(line => {
+    fm[1].split(/\r?\n/).forEach(line => {
         const i = line.indexOf(':');
         if (i === -1) return;
         meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
     });
-    return { meta, body: md.slice(match[0].length).trim() };
+
+    return {
+        meta,
+        body: md.slice(fm[0].length).trim()
+    };
 }
 
 function renderMeta(meta) {
@@ -169,11 +175,12 @@ function renderMeta(meta) {
         ['cuisine', 'Cuisine'],
         ['source', 'Source']
     ];
+
     return `
         <div class="meta-grid">
             ${fields
                 .filter(([k]) => meta[k] && meta[k] !== 'n/a')
-                .map(([k,l]) => `
+                .map(([k, l]) => `
                     <div class="meta-item">
                         <span class="meta-label">${l}</span>
                         ${meta[k]}
@@ -222,52 +229,59 @@ const observer = new IntersectionObserver(entries => {
     });
 }, { rootMargin: '200px' });
 
-Promise.all(
-    recipesIndex.map(f => fetch(recipesFolder + f).then(r => r.text()))
-).then(files => {
-    const cats = new Set();
-    const cuis = new Set();
+const cats = new Set();
+const cuis = new Set();
 
-    files.forEach(md => {
-        const { meta, body } = parseFrontmatter(md);
-        const id = slugify(meta.title || Math.random().toString());
+recipesIndex.forEach(filename => {
+    axios.get(recipesFolder + filename)
+        .then(res => {
+            const { meta, body } = parseFrontmatter(res.data);
+            const id = slugify(meta.title || filename);
 
-        cats.add(meta.category);
-        cuis.add(meta.cuisine);
+            if (meta.category) cats.add(meta.category);
+            if (meta.cuisine) cuis.add(meta.cuisine);
 
-        indexEl.insertAdjacentHTML('beforeend',
-            `<a href="#${id}">${meta.title || 'Untitled'}</a>`
-        );
+            indexEl.insertAdjacentHTML(
+                'beforeend',
+                `<a href="#${id}">${meta.title || 'Untitled'}</a>`
+            );
 
-        const article = document.createElement('article');
-        article.className = 'recipe';
-        article.id = id;
-        article.dataset.category = meta.category || '';
-        article.dataset.cuisine = meta.cuisine || '';
-        article.dataset.search = (meta.title + ' ' + body).toLowerCase();
-        article._data = { meta, body };
-        article.innerHTML = '<em>Loading...</em>';
+            const article = document.createElement('article');
+            article.className = 'recipe';
+            article.id = id;
+            article.dataset.category = meta.category || '';
+            article.dataset.cuisine = meta.cuisine || '';
+            article.dataset.search = ((meta.title || '') + ' ' + body).toLowerCase();
+            article._data = { meta, body };
+            article.innerHTML = '<em>Loading...</em>';
 
-        container.appendChild(article);
-        observer.observe(article);
-    });
-
-    [...cats].filter(Boolean).forEach(c =>
-        filterCategory.insertAdjacentHTML('beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
-    [...cuis].filter(Boolean).forEach(c =>
-        filterCuisine.insertAdjacentHTML('beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
+            container.appendChild(article);
+            observer.observe(article);
+        })
+        .catch(err => console.error('Failed to load', filename, err));
 });
+
+setTimeout(() => {
+    [...cats].forEach(c =>
+        filterCategory.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
+    [...cuis].forEach(c =>
+        filterCuisine.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
+}, 500);
 
 searchInput.oninput = applyFilters;
 filterCategory.onchange = applyFilters;
 filterCuisine.onchange = applyFilters;
 </script>
 
+
 </body>
 </html>
+
