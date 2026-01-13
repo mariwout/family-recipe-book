@@ -71,12 +71,6 @@ main {
     margin-top: 0;
 }
 
-.recipe img {
-    max-width: 100%;
-    border-radius: 6px;
-    margin: 0.5rem 0 1rem 0;
-}
-
 .meta-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -129,14 +123,17 @@ main {
 </div>
 
 <button id="backToTop">Top</button>
-    
+
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <script>
 const recipesFolder = 'recipes/';
 const recipesIndex = [
-    'franse-preisoep-met-comte-borrelbrood.md'
+    'franse-preisoep-met-comte-borrelbrood.md',
+    'snellduitse-kaassoep-met-prei.md',
+    'witlof-krans.md',
+    'ananas-tarte-tatin-met-kokijs.md'
 ];
 
 const container = document.getElementById('recipes');
@@ -188,7 +185,10 @@ function renderMeta(meta) {
 }
 
 function slugify(text) {
-    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return String(text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
 }
 
 function applyFilters() {
@@ -224,28 +224,30 @@ const observer = new IntersectionObserver(entries => {
         `;
         e.target.dataset.loaded = '1';
     });
-}, { rootMargin: '200px' });
+}, {
+    root: container,
+    rootMargin: '200px'
+});
 
 const cats = new Set();
 const cuis = new Set();
 
-// Fetch all recipes concurrently
-const fetchAll = recipesIndex.map(filename =>
+const fetchAll = recipesIndex.map((filename, i) =>
     axios
         .get(recipesFolder + filename)
-        .then(res => ({ filename, md: res.data }))
+        .then(res => ({ filename, md: res.data, i }))
         .catch(err => {
             console.error('Failed', filename, err);
-            return null; // allow Promise.all to resolve
+            return null;
         })
 );
 
 Promise.all(fetchAll).then(results => {
     results
         .filter(Boolean)
-        .forEach(({ filename, md }) => {
+        .forEach(({ filename, md, i }) => {
             const { meta, body } = parseFrontmatter(md);
-            const id = slugify(meta.title || filename);
+            const id = slugify(meta.title || filename) + '-' + i;
 
             if (meta.category) cats.add(meta.category);
             if (meta.cuisine) cuis.add(meta.cuisine);
@@ -260,7 +262,8 @@ Promise.all(fetchAll).then(results => {
             article.id = id;
             article.dataset.category = meta.category || '';
             article.dataset.cuisine = meta.cuisine || '';
-            article.dataset.search = ((meta.title || '') + ' ' + body).toLowerCase();
+            article.dataset.search =
+                ((meta.title || '') + ' ' + body).toLowerCase();
             article._data = { meta, body };
             article.innerHTML = '<em>Loading...</em>';
 
@@ -268,7 +271,6 @@ Promise.all(fetchAll).then(results => {
             observer.observe(article);
         });
 
-    // Populate filters after all recipes are known
     [...cats].forEach(c =>
         filterCategory.insertAdjacentHTML(
             'beforeend',
@@ -284,30 +286,10 @@ Promise.all(fetchAll).then(results => {
     );
 });
 
-
-setTimeout(() => {
-    [...cats].forEach(c =>
-        filterCategory.insertAdjacentHTML(
-            'beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
-    [...cuis].forEach(c =>
-        filterCuisine.insertAdjacentHTML(
-            'beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
-}, 500);
-
 searchInput.oninput = applyFilters;
 filterCategory.onchange = applyFilters;
 filterCuisine.onchange = applyFilters;
 </script>
 
-
 </body>
 </html>
-
-
-
