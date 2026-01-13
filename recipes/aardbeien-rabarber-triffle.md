@@ -10,7 +10,7 @@ persons: n/a
 title: AARDBEIEN-RABARBER TRIFFLE
 ---
 
-![Recipe Image](images\image103.jpeg)
+![Recipe Image](images/image103.jpeg)
 
 ## Ingrediënten
 
@@ -43,5 +43,6 @@ Klop de slagroom stijf en spatel door de mascarpone.
 Snijd de cake in 4 plakken en bedek de bodem van de glazen ermee. Verdeel de aardbeienlikeur, de aardbeien, de rabarber en de mascarpone erover. Laat minstens 1 uur in de koelkast opstijven. Garneer met een aardbei.
 
 ## Tips
+
 
 In plaats van roombotercake kan je ook verkruimelde koekjes als bodem gebruiken. En een andere likeur als sinaasappel- of cassislikeur is natuurlijk ook mogelijk.
