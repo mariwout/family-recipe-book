@@ -17,24 +17,13 @@ header {
     border-bottom: 1px solid #ddd;
 }
 
-header h1 {
-    margin: 0 0 0.5rem 0;
-}
-
-header input, header select {
-    padding: 0.4rem;
-    margin-right: 0.5rem;
-}
-
 .layout {
     display: grid;
     grid-template-columns: 260px 1fr;
-    height: calc(100vh - 96px);
+    height: calc(100vh - 72px);
 }
 
 .sidebar {
-    position: sticky;
-    top: 0;
     overflow-y: auto;
     border-right: 1px solid #ddd;
     background: #fff;
@@ -43,10 +32,10 @@ header input, header select {
 
 .sidebar a {
     display: block;
-    text-decoration: none;
     color: #333;
-    font-size: 0.9rem;
+    text-decoration: none;
     margin-bottom: 0.4rem;
+    font-size: 0.9rem;
 }
 
 .sidebar a:hover {
@@ -64,11 +53,6 @@ main {
     margin-bottom: 2rem;
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    min-height: 150px;
-}
-
-.recipe h2 {
-    margin-top: 0;
 }
 
 .meta-grid {
@@ -92,19 +76,6 @@ main {
     font-weight: bold;
     text-transform: uppercase;
 }
-
-#backToTop {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 14px;
-    border: none;
-    border-radius: 5px;
-    background: #007acc;
-    color: #fff;
-    cursor: pointer;
-    display: none;
-}
 </style>
 </head>
 
@@ -112,9 +83,6 @@ main {
 
 <header>
     <h1>Family Recipe Book</h1>
-    <input id="search" placeholder="Search recipes">
-    <select id="filterCategory"><option value="">All categories</option></select>
-    <select id="filterCuisine"><option value="">All cuisines</option></select>
 </header>
 
 <div class="layout">
@@ -122,26 +90,13 @@ main {
     <main id="recipes"></main>
 </div>
 
-<button id="backToTop">Top</button>
-
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <script>
 const recipesFolder = 'recipes/';
-const recipesIndex = [
-    'franse-preisoep-met-comte-borrelbrood.md',
-    'snellduitse-kaassoep-met-prei.md',
-    'witlof-krans.md',
-    'ananas-tarte-tatin-met-kokijs.md'
-];
-
 const container = document.getElementById('recipes');
 const indexEl = document.getElementById('recipeIndex');
-const searchInput = document.getElementById('search');
-const filterCategory = document.getElementById('filterCategory');
-const filterCuisine = document.getElementById('filterCuisine');
-const backBtn = document.getElementById('backToTop');
 
 function parseFrontmatter(md) {
     const fm = md.match(/^---\s*([\s\S]*?)\s*---\s*/);
@@ -160,135 +115,49 @@ function parseFrontmatter(md) {
     };
 }
 
-function renderMeta(meta) {
-    const fields = [
-        ['persons', 'Persons'],
-        ['prep_time', 'Prep'],
-        ['cook_time', 'Cook'],
-        ['category', 'Category'],
-        ['cuisine', 'Cuisine'],
-        ['source', 'Source']
-    ];
-
-    return `
-        <div class="meta-grid">
-            ${fields
-                .filter(([k]) => meta[k] && meta[k] !== 'n/a')
-                .map(([k, l]) => `
-                    <div class="meta-item">
-                        <span class="meta-label">${l}</span>
-                        ${meta[k]}
-                    </div>
-                `).join('')}
-        </div>
-    `;
-}
-
 function slugify(text) {
-    return String(text || '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 }
 
-function applyFilters() {
-    const q = searchInput.value.toLowerCase();
-    const c = filterCategory.value;
-    const cu = filterCuisine.value;
-
-    document.querySelectorAll('.recipe').forEach(r => {
-        const text = r.dataset.search;
-        const rc = r.dataset.category || '';
-        const rcu = r.dataset.cuisine || '';
-        const show =
-            (!q || text.includes(q)) &&
-            (!c || rc === c) &&
-            (!cu || rcu === cu);
-        r.style.display = show ? '' : 'none';
-    });
-}
-
-window.addEventListener('scroll', () => {
-    backBtn.style.display = window.scrollY > 300 ? 'block' : 'none';
-});
-backBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
-
-const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-        if (!e.isIntersecting || e.target.dataset.loaded) return;
-        const { meta, body } = e.target._data;
-        e.target.innerHTML = `
-            <h2>${meta.title || 'Untitled'}</h2>
-            ${renderMeta(meta)}
-            <div class="content">${marked.parse(body)}</div>
-        `;
-        e.target.dataset.loaded = '1';
-    });
-}, {
-    root: container,
-    rootMargin: '200px'
-});
-
-const cats = new Set();
-const cuis = new Set();
-
-const fetchAll = recipesIndex.map((filename, i) =>
-    axios
-        .get(recipesFolder + filename)
-        .then(res => ({ filename, md: res.data, i }))
-        .catch(err => {
-            console.error('Failed', filename, err);
-            return null;
-        })
-);
-
-Promise.all(fetchAll).then(results => {
-    results
-        .filter(Boolean)
-        .forEach(({ filename, md, i }) => {
+axios.get(recipesFolder + 'index.json')
+    .then(res => res.data)
+    .then(files => Promise.all(
+        files.map(filename =>
+            axios.get(recipesFolder + filename)
+                .then(r => ({ filename, md: r.data }))
+        )
+    ))
+    .then(results => {
+        results.forEach(({ filename, md }) => {
             const { meta, body } = parseFrontmatter(md);
-            const id = slugify(meta.title || filename) + '-' + i;
-
-            if (meta.category) cats.add(meta.category);
-            if (meta.cuisine) cuis.add(meta.cuisine);
+            const id = slugify(meta.title || filename);
 
             indexEl.insertAdjacentHTML(
                 'beforeend',
-                `<a href="#${id}">${meta.title || 'Untitled'}</a>`
+                `<a href="#${id}">${meta.title || filename}</a>`
             );
 
             const article = document.createElement('article');
             article.className = 'recipe';
             article.id = id;
-            article.dataset.category = meta.category || '';
-            article.dataset.cuisine = meta.cuisine || '';
-            article.dataset.search =
-                ((meta.title || '') + ' ' + body).toLowerCase();
-            article._data = { meta, body };
-            article.innerHTML = '<em>Loading...</em>';
+
+            article.innerHTML = `
+                <h2>${meta.title || 'Untitled'}</h2>
+                <div class="meta-grid">
+                    ${meta.persons ? `<div class="meta-item"><span class="meta-label">Persons</span>${meta.persons}</div>` : ''}
+                    ${meta.prep_time ? `<div class="meta-item"><span class="meta-label">Prep</span>${meta.prep_time}</div>` : ''}
+                    ${meta.cook_time ? `<div class="meta-item"><span class="meta-label">Cook</span>${meta.cook_time}</div>` : ''}
+                    ${meta.category ? `<div class="meta-item"><span class="meta-label">Category</span>${meta.category}</div>` : ''}
+                    ${meta.cuisine ? `<div class="meta-item"><span class="meta-label">Cuisine</span>${meta.cuisine}</div>` : ''}
+                    ${meta.source ? `<div class="meta-item"><span class="meta-label">Source</span>${meta.source}</div>` : ''}
+                </div>
+                <div class="content">${marked.parse(body)}</div>
+            `;
 
             container.appendChild(article);
-            observer.observe(article);
         });
-
-    [...cats].forEach(c =>
-        filterCategory.insertAdjacentHTML(
-            'beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
-
-    [...cuis].forEach(c =>
-        filterCuisine.insertAdjacentHTML(
-            'beforeend',
-            `<option value="${c}">${c}</option>`
-        )
-    );
-});
-
-searchInput.oninput = applyFilters;
-filterCategory.onchange = applyFilters;
-filterCuisine.onchange = applyFilters;
+    })
+    .catch(err => console.error('Recipe load failed', err));
 </script>
 
 </body>
