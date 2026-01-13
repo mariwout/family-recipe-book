@@ -229,10 +229,22 @@ const observer = new IntersectionObserver(entries => {
 const cats = new Set();
 const cuis = new Set();
 
-recipesIndex.forEach(filename => {
-    axios.get(recipesFolder + filename)
-        .then(res => {
-            const { meta, body } = parseFrontmatter(res.data);
+// Fetch all recipes concurrently
+const fetchAll = recipesIndex.map(filename =>
+    axios
+        .get(recipesFolder + filename)
+        .then(res => ({ filename, md: res.data }))
+        .catch(err => {
+            console.error('Failed', filename, err);
+            return null; // allow Promise.all to resolve
+        })
+);
+
+Promise.all(fetchAll).then(results => {
+    results
+        .filter(Boolean)
+        .forEach(({ filename, md }) => {
+            const { meta, body } = parseFrontmatter(md);
             const id = slugify(meta.title || filename);
 
             if (meta.category) cats.add(meta.category);
@@ -254,9 +266,24 @@ recipesIndex.forEach(filename => {
 
             container.appendChild(article);
             observer.observe(article);
-        })
-        .catch(err => console.error('Failed to load', filename, err));
+        });
+
+    // Populate filters after all recipes are known
+    [...cats].forEach(c =>
+        filterCategory.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
+
+    [...cuis].forEach(c =>
+        filterCuisine.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${c}">${c}</option>`
+        )
+    );
 });
+
 
 setTimeout(() => {
     [...cats].forEach(c =>
@@ -281,5 +308,6 @@ filterCuisine.onchange = applyFilters;
 
 </body>
 </html>
+
 
 
